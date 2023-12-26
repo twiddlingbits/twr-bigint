@@ -403,6 +403,9 @@ int twr_big_isint32u(struct twr_bigint * big) {
 	return 1;
 }
 
+/* returns the log (rounded to an integer) for the passed in fraction  numin/denin */
+/* set denin to 1 to take the log of an integer */
+
 int twr_big_10log(struct twr_bigint * numin, struct twr_bigint * denin) {
 	int logval=0;
 
@@ -481,6 +484,13 @@ int twr_big_2log(struct twr_bigint * numin, struct twr_bigint * denin) {
 }
 
 uint32_t twr_big_num10digits(struct twr_bigint * numberin) {
+	if (twr_big_iszero(numberin)) return 1;
+
+	struct twr_bigint denominator;
+	twr_big_assign32u(&denominator, 1);
+	return twr_big_10log(numberin, &denominator)+1;
+}
+	/*
 	int count = 0; 
 	struct twr_bigint ten, number;
 
@@ -494,7 +504,7 @@ uint32_t twr_big_num10digits(struct twr_bigint * numberin) {
 	} while (!twr_big_iszero(&number));
 
 	return count;
-}
+	*/
 
 static void _strhorizflip(char * buffer, int n) {
 	for (int k=0; k<n/2;k++)  {
@@ -801,6 +811,15 @@ int twr_big_run_unit_tests() {
 	twr_big_assign32u(&den, 1);
 	twr_big_bmax(&num);
 	if ((BIG_INT_WORD_COUNT*32-1) != twr_big_2log(&num, &den)) return 0;
+
+	twr_big_assign32u(&a, 0);
+	if (twr_big_num10digits(&a)!=1) return 0;
+
+	twr_big_assign32u(&a, 9);
+	if (twr_big_num10digits(&a)!=1) return 0;
+
+	twr_big_assign32u(&a, 1234);
+	if (twr_big_num10digits(&a)!=4) return 0;
 
 	return 1;
 
