@@ -1,3 +1,6 @@
+/* Copyright 2023 Anthony J. Wood */
+/* Okay to use under MIT license */
+
 #include "twr-bigint.h"
 #include <assert.h>
 
@@ -31,6 +34,14 @@ int twr_big_isequal(struct twr_bigint * big1, struct twr_bigint * big2) {
 	return 1;
 }
 
+int twr_big_isequal32u(struct twr_bigint * big1, uint32_t i32) {
+	if (big1->word[0]!= i32) return 0;
+	for (int i=1; i<BIG_INT_WORD_COUNT; i++)
+		if (big1->word[i]!=0) return 0;
+
+	return 1;
+}
+
 /* big1 >= big2 */
 int twr_big_isgteq(struct twr_bigint * big1, struct twr_bigint * big2) {
 
@@ -53,15 +64,17 @@ int twr_big_isgt(struct twr_bigint * big1, struct twr_bigint * big2) {
 }
 
 /* big1 <= big2 */
-int twr_big_islteq(struct twr_bigint * big1, struct twr_bigint * big2) {
+int twr_big_islteq(struct twr_bigint* big1, struct twr_bigint* big2) {
 	return twr_big_isgteq(big2, big1);
 }
 
-int twr_big_islt(struct twr_bigint * big1, struct twr_bigint * big2) {
+int twr_big_islt(struct twr_bigint* big1, struct twr_bigint* big2) {
 	return twr_big_isgt(big2, big1);
 }
 
-int twr_big_2pow(struct twr_bigint * big, unsigned int exp) {
+/* return 1 if overflow; otherwise 0*/
+int twr_big_2pow(struct twr_bigint * big, int exp) {
+	assert(exp>=0);
 	if (exp >=  BIG_INT_WORD_COUNT*32) return 1;
 	twr_big_bzero(big);
 	big->word[exp/32]=1<<(exp%32);
@@ -69,18 +82,18 @@ int twr_big_2pow(struct twr_bigint * big, unsigned int exp) {
 	return 0;
 }
 
-void twr_big_assign32u(struct twr_bigint * big, uint32_t ui) {
+void twr_big_assign32u(struct twr_bigint* big, uint32_t ui) {
 	twr_big_bzero(big);
 	big->word[0]=ui;
 }
 
-void twr_big_assign64u(struct twr_bigint * big, uint64_t ui) {
+void twr_big_assign64u(struct twr_bigint* big, uint64_t ui) {
 	twr_big_bzero(big);
 	big->word[0]=ui&0xFFFFFFFF;
 	big->word[1]=ui>>32;
 }
 
-void twr_big_assign128u(struct twr_bigint * big, uint64_t u1, uint64_t u2) {
+void twr_big_assign128u(struct twr_bigint* big, uint64_t u1, uint64_t u2) {
 	twr_big_bzero(big);
 	big->word[0]=u2&0xFFFFFFFF;
 	big->word[1]=u2>>32;
@@ -88,9 +101,19 @@ void twr_big_assign128u(struct twr_bigint * big, uint64_t u1, uint64_t u2) {
 	big->word[3]=u1>>32;
 }
 
-void twr_big_assign(struct twr_bigint *dest, struct twr_bigint * source) {
+void twr_big_assign(struct twr_bigint* dest, struct twr_bigint* source) {
 	for (int i=0; i<BIG_INT_WORD_COUNT; i++)
 		dest->word[i]=source->word[i];
+}
+
+struct twr_bigint* twr_big_min(struct twr_bigint* a, struct twr_bigint* b)
+{
+	if (twr_big_isgt(a, b)) return b; else return a;
+}
+
+struct twr_bigint* twr_big_max(struct twr_bigint* a, struct twr_bigint* b)
+{
+	if (twr_big_isgt(a, b)) return a; else return b;
 }
 
 int twr_big_mult32u(struct twr_bigint * product, struct twr_bigint * multiplicand, uint32_t multipler) {
@@ -109,7 +132,7 @@ int twr_big_mult32u(struct twr_bigint * product, struct twr_bigint * multiplican
 
 /*returns 0 if no error, 1 if overflow */
 
-int twr_big_10pow(struct twr_bigint * big, unsigned int base, unsigned int exp) {
+int twr_big_pow(struct twr_bigint * big, unsigned int base, int exp) {
 	twr_big_assign32u(big, 1);
 	while (exp--)
 		if (twr_big_mult32u(big, big, base)) return 1;
@@ -424,7 +447,7 @@ int twr_big_10log(struct twr_bigint * numin, struct twr_bigint * denin) {
 			if (twr_big_isgteq(numin, &den) && twr_big_islt(numin, &den10)) return logval;
 
 			logval++;
-			twr_big_assign(&den, &den10);  // divide by 10
+			twr_big_assign(&den, &den10); 
 		}
 	}
 	else {
@@ -578,8 +601,12 @@ int twr_big_run_unit_tests() {
 
 	twr_big_bzero(&a);
 	if (!twr_big_iszero(&a)) return 0;
+	if (!twr_big_isequal32u(&a, 0)) return 0;
+	if (twr_big_isequal32u(&a, 1)) return 0;
+
 
 	twr_big_assign64u(&a, 1ULL<<32 | 1);
+	if (twr_big_isequal32u(&a, 1)) return 0;
 	if (!twr_big_shiftleft_words(&a, 63)) return 0;
 
 	twr_big_2pow(&a, BIG_INT_WORD_COUNT*32-1);  // set high bit
@@ -654,12 +681,12 @@ int twr_big_run_unit_tests() {
 	twr_big_2pow(&c, 0);
 	twr_big_assign32u(&a, 1);
 	if (!twr_big_isequal(&a, &c)) return 0;
-	twr_big_10pow(&c, 10, 9);
+	twr_big_pow(&c, 10, 9);
 	twr_big_assign64u(&a, 1000000000);
 	if (!twr_big_isequal(&a, &c)) return 0;
 
 	twr_big_2pow(&a, 500);
-	twr_big_10pow(&b, 2, 500);
+	twr_big_pow(&b, 2, 500);
 	if (!twr_big_isequal(&a, &b)) return 0;
 
 	twr_big_assign128u(&a, (uint64_t)0x0123456789ABCDEF, (uint64_t)0xFEDCBA9876543210);
@@ -682,7 +709,7 @@ int twr_big_run_unit_tests() {
 	twr_big_add32u(&a, &a, 1);
 	if (!twr_big_iszero(&a)) return 0;
 
-	twr_big_10pow(&a, 10, 250);
+	twr_big_pow(&a, 10, 250);
 	twr_big_assign(&b, &a);
 	if (twr_big_shiftleft_words(&a, 7)) return 0;
 	if (twr_big_shiftleft_bits(&b, 7*32)) return 0;
@@ -709,8 +736,8 @@ int twr_big_run_unit_tests() {
 	twr_big_set_bit(&a, BIG_INT_WORD_COUNT*32-1, 0);
 	if (twr_big_get_bit(&a, BIG_INT_WORD_COUNT*32-1)!=0) return 0;
 
-	twr_big_10pow(&a, 10, 123);
-	twr_big_10pow(&b, 10, 123);
+	twr_big_pow(&a, 10, 123);
+	twr_big_pow(&b, 10, 123);
 	twr_big_add(&c, &a, &b);  
 	twr_big_sub(&a, &a, &b);
 	if (!twr_big_iszero(&a)) return 0;
@@ -740,11 +767,11 @@ int twr_big_run_unit_tests() {
 	if (!twr_big_isequal(&q, &c)) return 0;
 	if (!twr_big_iszero(&r)) return 0;
 
-	twr_big_10pow(&a, 10, 150);
-	twr_big_10pow(&b, 10, 50);
+	twr_big_pow(&a, 10, 150);
+	twr_big_pow(&b, 10, 50);
 	twr_big_add32u(&a, &a, 1);
 	twr_big_div(&q, &r, &a, &b);
-	twr_big_10pow(&c, 10, 100);
+	twr_big_pow(&c, 10, 100);
 	if (!twr_big_isequal(&q, &c)) return 0;
 	twr_big_assign32u(&c, 1);
 	if (!twr_big_isequal(&r, &c)) return 0;
@@ -820,6 +847,14 @@ int twr_big_run_unit_tests() {
 
 	twr_big_assign32u(&a, 1234);
 	if (twr_big_num10digits(&a)!=4) return 0;
+
+	struct twr_bigint small, big;
+	twr_big_bzero(&small);
+	twr_big_bmax(&big);
+	if (twr_big_min(&big, &small)!=&small) return 0;
+	if (twr_big_min(&small, &big)!=&small) return 0;
+	if (twr_big_max(&big, &small)!=&big) return 0;
+	if (twr_big_max(&small, &big)!=&big) return 0;
 
 	return 1;
 
