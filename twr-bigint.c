@@ -856,6 +856,10 @@ int twr_big_run_unit_tests() {
 	if (twr_big_max(&big, &small)!=&big) return 0;
 	if (twr_big_max(&small, &big)!=&big) return 0;
 
+	twr_big_pow(&big, 10, 10);
+	twr_big_assign64u(&small, 10000000000);
+	if (!twr_big_isequal(&big, &small)) return 0;
+
 	return 1;
 
 	
