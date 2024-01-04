@@ -4,9 +4,9 @@
 
 #include <stdint.h>  
 
-/** a simple unsigned bigint of 2048 bits with default word count */
+/** a simple unsigned bigint of BIG_INT_WORD_COUNT*32 bits with default word count */
 
-#define BIG_INT_WORD_COUNT 64
+#define BIG_INT_WORD_COUNT 80
 
 struct twr_bigint {
 	uint32_t word[BIG_INT_WORD_COUNT];

@@ -132,6 +132,7 @@ int twr_big_mult32u(struct twr_bigint * product, struct twr_bigint * multiplican
 
 /*returns 0 if no error, 1 if overflow */
 
+// one way to optimize is to do a 10pow and look for multiples of 10,000,000 (or larger)
 int twr_big_pow(struct twr_bigint * big, unsigned int base, int exp) {
 	twr_big_assign32u(big, 1);
 	while (exp--)
@@ -432,7 +433,9 @@ int twr_big_isint32u(struct twr_bigint * big) {
 int twr_big_10log(struct twr_bigint * numin, struct twr_bigint * denin) {
 	int logval=0;
 
-	if (twr_big_iszero(numin)) return -1;
+	if (twr_big_iszero(numin)) return BIGINT_LOG_OFZERO_ERROR;
+
+	if (twr_big_isequal(numin, denin)) return 0;
 
 	if (twr_big_isgteq(numin, denin)) { /** >=1 */
 		struct twr_bigint den, den10;
@@ -607,7 +610,7 @@ int twr_big_run_unit_tests() {
 
 	twr_big_assign64u(&a, 1ULL<<32 | 1);
 	if (twr_big_isequal32u(&a, 1)) return 0;
-	if (!twr_big_shiftleft_words(&a, 63)) return 0;
+	if (!twr_big_shiftleft_words(&a, BIG_INT_WORD_COUNT-1)) return 0;
 
 	twr_big_2pow(&a, BIG_INT_WORD_COUNT*32-1);  // set high bit
 	if (!twr_big_shiftleft_words(&a, 1)) return 0;
@@ -618,19 +621,19 @@ int twr_big_run_unit_tests() {
 	if (!twr_big_iszero(&a)) return 0;
 
 	twr_big_assign32u(&a,  1<<31);
-	if (twr_big_shiftleft_words(&a, 63)) return 0;
-	twr_big_2pow(&b, 31+63*32);
+	if (twr_big_shiftleft_words(&a, BIG_INT_WORD_COUNT-1)) return 0;
+	twr_big_2pow(&b, 31+(BIG_INT_WORD_COUNT-1)*32);
 	if (!twr_big_isequal(&a, &b)) return 0;
 
 	twr_big_2pow(&a, BIG_INT_WORD_COUNT*32-1);  // set high bit
-	if (twr_big_shiftright_words(&a, 63)) return 0;
+	if (twr_big_shiftright_words(&a, BIG_INT_WORD_COUNT-1)) return 0;
 
 	twr_big_assign32u(&a,  1<<31);
 	if (!twr_big_shiftright_words(&a, 1)) return 0;
 
 	twr_big_assign32u(&b, 1);
 	twr_big_bmax(&a);
-	for (int i=0; i < 64*32-1; i++)
+	for (int i=0; i < BIG_INT_WORD_COUNT*32-1; i++)
 		if (!twr_big_shiftright_onebit(&a)) 
 			return 0;
 	if (!twr_big_isequal(&a, &b)) return 0;
@@ -799,13 +802,20 @@ int twr_big_run_unit_tests() {
 	if (0!=twr_big_10log(&num, &den)) return 0;
 
 	twr_big_assign32u(&num, 1);
-	int xx=twr_big_10log(&num, &den);
-	if (-617 != xx) return 0;
+	int xx;
+	if (BIG_INT_WORD_COUNT==64) {
+		xx=twr_big_10log(&num, &den);
+		if (-617 != xx) return 0;
+	}
+
+	twr_big_pow(&den, 10, 600);
+	xx=twr_big_10log(&num, &den);
+	if (xx!=-600) return 0;
 
 	twr_big_assign32u(&den, 1);
-	twr_big_bmax(&num);
+	twr_big_pow(&num, 10, 600);
 	xx=twr_big_10log(&num, &den);
-	if (616 != xx) return 0;
+	if (600 != xx) return 0;
 
 
 	twr_big_assign32u(&den, 1);
