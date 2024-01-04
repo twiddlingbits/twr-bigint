@@ -132,14 +132,117 @@ int twr_big_mult32u(struct twr_bigint * product, struct twr_bigint * multiplican
 
 /*returns 0 if no error, 1 if overflow */
 
-// one way to optimize is to do a 10pow and look for multiples of 10,000,000 (or larger)
 int twr_big_pow(struct twr_bigint * big, unsigned int base, int exp) {
+	assert(exp>=0);
+	if (base==10)
+		return twr_big_10pow(big, exp);
+	else {
+		twr_big_assign32u(big, 1);
+		while (exp--)
+			if (twr_big_mult32u(big, big, base)) return 1;
+
+		return 0;
+	}
+}
+
+static uint32_t pow10_u32(uint32_t n) {
+	assert(n<10);
+	switch (n) {
+		case 0:
+			return 1;
+		case 1:
+			return 10;
+		case 2:
+			return 100;
+		case 3:
+			return 1000;
+		case 4:
+			return 10000;
+		case 5:
+			return 100000;
+		case 6:
+			return 1000000;
+		case 7:
+			return 10000000;
+		case 8:
+			return 100000000;
+		case 9:
+			return 1000000000;
+		default:
+			assert(0);	
+	}
+}
+
+static uint32_t pow5_u32(uint32_t n) {
+	assert(n<10);
+	switch (n) {
+		case 0:
+			return 1;
+		case 1:
+			return 5;
+		case 2:
+			return 25;
+		case 3:
+			return 125;
+		case 4:
+			return 625;
+		case 5:
+			return 3125;
+		case 6:
+			return 15625;
+		case 7:
+			return 78125;
+		case 8:
+			return 390625;
+		case 9:
+			return 1953125;
+		default:
+			assert(0);	
+	}
+}
+
+int twr_big_10pow(struct twr_bigint * big, int exp) {
+	assert(exp>=0);
+
+	if (exp<10) {
+		twr_big_assign64u(big, pow10_u32(exp));
+		return 0;
+	}
+
+	int n=exp/9;
+	int left=exp-n*9;
 	twr_big_assign32u(big, 1);
-	while (exp--)
-		if (twr_big_mult32u(big, big, base)) return 1;
+
+	while (n--)
+		if (twr_big_mult32u(big, big, 1000000000)) return 1;
+
+	assert(left<9);
+	if (twr_big_mult32u(big, big, pow10_u32(left))) return 1;
 
 	return 0;
 }
+
+int twr_big_5pow(struct twr_bigint * big, int exp) {
+	assert(exp>=0);
+
+	if (exp<10) {
+		twr_big_assign64u(big, pow5_u32(exp));
+		return 0;
+	}
+
+	int n=exp/10;
+	int left=exp-n*10;
+	twr_big_assign32u(big, 1);
+
+	while (n--)
+		if (twr_big_mult32u(big, big, 9765625)) return 1;
+
+	assert(left<10);
+	if (twr_big_mult32u(big, big, pow5_u32(left))) return 1;
+
+	return 0;
+}
+
 
 /** 0 if no error; 1 if bit(s) lost  (non-zero words shift out end) */
 int twr_big_shiftleft_words(struct twr_bigint * bi, unsigned int n) {
@@ -869,6 +972,44 @@ int twr_big_run_unit_tests() {
 	twr_big_pow(&big, 10, 10);
 	twr_big_assign64u(&small, 10000000000);
 	if (!twr_big_isequal(&big, &small)) return 0;
+
+	twr_big_10pow(&big, 0);
+	if (!twr_big_isequal32u(&big, 1)) return 0;
+	twr_big_10pow(&big, 1);
+	if (!twr_big_isequal32u(&big, 10)) return 0;
+	twr_big_10pow(&big, 2);
+	if (!twr_big_isequal32u(&big, 100)) return 0;
+	twr_big_10pow(&big, 3);
+	if (!twr_big_isequal32u(&big, 1000)) return 0;
+	twr_big_10pow(&big, 4);
+	if (!twr_big_isequal32u(&big, 10000)) return 0;
+	twr_big_10pow(&big, 5);
+	if (!twr_big_isequal32u(&big, 100000)) return 0;
+	twr_big_10pow(&big, 6);
+	if (!twr_big_isequal32u(&big, 1000000)) return 0;
+	twr_big_10pow(&big, 7);
+	if (!twr_big_isequal32u(&big, 10000000)) return 0;
+	twr_big_10pow(&big, 8);
+	if (!twr_big_isequal32u(&big, 100000000)) return 0;
+	twr_big_10pow(&big, 9);
+	if (!twr_big_isequal32u(&big, 1000000000)) return 0;
+
+	twr_big_10pow(&big,  11);
+	twr_big_assign64u(&small, 100000000000);
+	if (!twr_big_isequal(&big, &small)) return 0;
+
+	twr_big_10pow(&big,  12);
+	twr_big_assign64u(&small, 1000000000000);
+	if (!twr_big_isequal(&big, &small)) return 0;
+
+	twr_big_10pow(&big,  13);
+	twr_big_assign64u(&small, 10000000000000);
+	if (!twr_big_isequal(&big, &small)) return 0;
+	
+	twr_big_5pow(&big, 1);
+	if (!twr_big_isequal32u(&big, 5)) return 0;
+	twr_big_5pow(&big, 13);
+	if (!twr_big_isequal32u(&big, 1220703125)) return 0;
 
 	return 1;
 

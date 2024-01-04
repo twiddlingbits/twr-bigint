@@ -27,6 +27,8 @@ int twr_big_isgt(struct twr_bigint* big1, struct twr_bigint* big2);
 int twr_big_islt(struct twr_bigint* big1, struct twr_bigint* big2);
 
 int twr_big_2pow(struct twr_bigint* big, int exp);
+int twr_big_5pow(struct twr_bigint * big, int exp);
+int twr_big_10pow(struct twr_bigint * big, int exp);
 int twr_big_pow(struct twr_bigint* big, unsigned int base, int exp);
 int twr_big_2log(struct twr_bigint* numin, struct twr_bigint* denin);
 int twr_big_10log(struct twr_bigint* numin, struct twr_bigint* denin);
