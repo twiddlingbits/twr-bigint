@@ -243,7 +243,6 @@ int twr_big_5pow(struct twr_bigint * big, int exp) {
 	return 0;
 }
 
-
 /** 0 if no error; 1 if bit(s) lost  (non-zero words shift out end) */
 int twr_big_shiftleft_words(struct twr_bigint * bi, unsigned int n) {
 
@@ -520,58 +519,6 @@ void twr_big_div(struct twr_bigint * q, struct twr_bigint * r, struct twr_bigint
 }
 
 #if 0
-// not lose to working
-void twr_big_div_fast(struct twr_bigint * q, struct twr_bigint * r, struct twr_bigint * num, struct twr_bigint * den) {
-	struct twr_bigint qt;
-	struct twr_bigint rt;
-
-	if (r==NULL) r=&rt;
-
-	twr_big_bzero(r);
-
-	if (twr_big_iszero(den)) {
-		twr_big_bmax(q);
-		return;
-	}
-
-	twr_big_bzero(&qt);
-	/*
-	for i := n − 1 .. 0 do  -- Where n is number of bits in N
-	R := R << 1           -- Left-shift R by 1 bit
-	R(0) := N(i)          -- Set the least-significant bit of R equal to bit i of the numerator
-	if R ≥ D then
-		R := R − D
-		Q(i) := 1
-	end
-	end
-
-
-	for i := n − 1 .. 0 do  -- Where n is number of bits in N
-	R := R << 1           -- Left-shift R by 1 bit
-	R(0) := N(i)          -- Set the least-significant bit of R equal to bit i of the numerator
-	if R ≥ D then
-		Q(i) := int(R/D) -> loop R-D
-		R := R − Q(i)*D
-	end
-	end
-	*/
-//BOOL QueryPerformanceCounter(
-//  [out] LARGE_INTEGER *lpPerformanceCount
-//);
-
-	for (int i=get_used_word_count(num)-1; i>=0; i--) {
-		twr_big_shiftleft_words(r, 1);
-		r->word[0]=num->word[i];
-		if (twr_big_isgteq(r, den)) {
-			twr_big_sub(r, r, den);
-			q->word[i]=1;
-		}
-	}
-	twr_big_assign(q, &qt);
-}
-#endif
-
-#if 0
 
 This further simplified and optimised implementation of Algorithm D for unsigned 128÷64-bit division on 32-bit machines is based on a 64÷32-bit division returning a 64-bit quotient and a 32-bit remainder, trivially implemented per long (alias schoolbook) division using a narrowing 64÷32-bit division returning a 32-bit quotient and a 32-bit remainder.
 // Copyleft © 2011-2024, Stefan Kanthak <‍stefan‍.‍kanthak‍@‍nexgo‍.‍de‍>
@@ -727,7 +674,7 @@ int twr_big_2log(struct twr_bigint * numin, struct twr_bigint * denin) {
 		while (1) {
 			twr_big_assign(&num2, &num);
 			int carry=twr_big_shiftleft_onebit(&num2); // *2
-			logval++;  /* both log 0.1 and log 0.9 return -1 */
+			logval++;  
 			if (carry!=0) 
 				return -logval;
 			if (twr_big_isgt(denin, &num) && twr_big_islteq(denin, &num2)) return -logval;
@@ -749,6 +696,7 @@ static uint32_t log10_u32(uint32_t n) {
 	if (n < 10000000) return 6;
 	if (n < 100000000) return 7;
 	if (n < 1000000000) return 8; // 1 Billion
+
 	return 9;
 }
 
@@ -774,6 +722,7 @@ static uint32_t log10_u64(uint64_t n) {
 	if (n < 100000000000000000ULL) return 16; 
 	if (n < 1000000000000000000ULL) return 17; 
 	if (n < 10000000000000000000ULL) return 18; 
+
 	return 19;
 }
 
@@ -792,23 +741,6 @@ uint32_t twr_big_num10digits(struct twr_bigint * numberin) {
 	twr_big_assign32u(&one, 1);
 	return twr_big_10log(numberin, &one)+1;
 }
-
-#if 0
-	struct twr_bigint in=*numberin;
-
-	struct twr_bigint billion;
-	twr_big_assign32u(&billion, 1000000000);
-	twr_big_complement(&billion, &billion);
-	twr_big_add32u(&billion, &billion, 1);  // twos complement, for subtraction
-
-	int bc=2;  // actually 1, but add in the extra 1 needed to turn log into digit count
-	while (1) {
-		twr_big_add(&in, &in, &billion);   // subtract 1B
-		if (twr_big_isint32u(&in))
-			return log10_u32(twr_big_get32u(&in))+bc;
-		bc++;
-	}
-#endif
 
 static void _strhorizflip(char * buffer, int n) {
 	for (int k=0; k<n/2;k++)  {
