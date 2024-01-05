@@ -519,6 +519,130 @@ void twr_big_div(struct twr_bigint * q, struct twr_bigint * r, struct twr_bigint
 	twr_big_assign(q, &qt);
 }
 
+#if 0
+// not lose to working
+void twr_big_div_fast(struct twr_bigint * q, struct twr_bigint * r, struct twr_bigint * num, struct twr_bigint * den) {
+	struct twr_bigint qt;
+	struct twr_bigint rt;
+
+	if (r==NULL) r=&rt;
+
+	twr_big_bzero(r);
+
+	if (twr_big_iszero(den)) {
+		twr_big_bmax(q);
+		return;
+	}
+
+	twr_big_bzero(&qt);
+	/*
+	for i := n − 1 .. 0 do  -- Where n is number of bits in N
+	R := R << 1           -- Left-shift R by 1 bit
+	R(0) := N(i)          -- Set the least-significant bit of R equal to bit i of the numerator
+	if R ≥ D then
+		R := R − D
+		Q(i) := 1
+	end
+	end
+
+
+	for i := n − 1 .. 0 do  -- Where n is number of bits in N
+	R := R << 1           -- Left-shift R by 1 bit
+	R(0) := N(i)          -- Set the least-significant bit of R equal to bit i of the numerator
+	if R ≥ D then
+		Q(i) := int(R/D) -> loop R-D
+		R := R − Q(i)*D
+	end
+	end
+	*/
+//BOOL QueryPerformanceCounter(
+//  [out] LARGE_INTEGER *lpPerformanceCount
+//);
+
+	for (int i=get_used_word_count(num)-1; i>=0; i--) {
+		twr_big_shiftleft_words(r, 1);
+		r->word[0]=num->word[i];
+		if (twr_big_isgteq(r, den)) {
+			twr_big_sub(r, r, den);
+			q->word[i]=1;
+		}
+	}
+	twr_big_assign(q, &qt);
+}
+#endif
+
+#if 0
+
+This further simplified and optimised implementation of Algorithm D for unsigned 128÷64-bit division on 32-bit machines is based on a 64÷32-bit division returning a 64-bit quotient and a 32-bit remainder, trivially implemented per long (alias schoolbook) division using a narrowing 64÷32-bit division returning a 32-bit quotient and a 32-bit remainder.
+// Copyleft © 2011-2024, Stefan Kanthak <‍stefan‍.‍kanthak‍@‍nexgo‍.‍de‍>
+
+// Divide a 128-bit integer dividend, supplied as a pair of 64-bit
+// integers in u0 and u1, by a 64-bit integer divisor, supplied in v;
+// return the 64-bit quotient and optionally the 64-bit remainder in *r.
+
+unsigned long long divllu(unsigned long long u0,
+                          unsigned long long u1,
+                          unsigned long long v,
+                          unsigned long long *r) {
+    unsigned long long qhat;        // A quotient.
+    unsigned long long rhat;        // A remainder.
+    unsigned long long uhat;        // A dividend digit pair.
+    unsigned           q0, q1;      // Quotient digits.
+    unsigned           s;           // Shift amount for norm.
+
+    if (u1 >= v) {                  // If overflow, set rem.
+        if (r != NULL)              // to an impossible value,
+            *r = ~0ULL;             // and return the largest
+        return ~0ULL;               // possible quotient.
+    }
+
+    s = __builtin_clzll(v);         // 0 <= s <= 63.
+    if (s != 0U) {
+        v <<= s;                    // Normalize divisor.
+        u1 <<= s;                   // Shift dividend left.
+        u1 |= u0 >> (64U - s);
+        u0 <<= s;
+    }
+                                    // Compute high quotient digit.
+    qhat = u1 / (unsigned) (v >> 32);
+    rhat = u1 % (unsigned) (v >> 32);
+
+    while ((unsigned) (qhat >> 32) != 0U ||
+                                    // Both qhat and rhat are less 2**32 here!
+           (unsigned long long) (unsigned) (qhat & ~0U) * (unsigned) (v & ~0U) >
+           ((rhat << 32) | (unsigned) (u0 >> 32))) {
+        qhat -= 1U;
+        rhat += (unsigned) (v >> 32);
+        if ((unsigned) (rhat >> 32) != 0U) break;
+    }
+
+    q1 = (unsigned) (qhat & ~0U);
+                                    // Multiply and subtract.
+    uhat = ((u1 << 32) | (unsigned) (u0 >> 32)) - q1 * v;
+
+                                    // Compute low quotient digit.
+    qhat = uhat / (unsigned) (v >> 32);
+    rhat = uhat % (unsigned) (v >> 32);
+
+    while ((unsigned) (qhat >> 32) != 0U ||
+                                    // Both qhat and rhat are less 2**32 here!
+           (unsigned long long) (unsigned) (qhat & ~0U) * (unsigned) (v & ~0U) >
+           ((rhat << 32) | (unsigned) (u0 & ~0U))) {
+        qhat -= 1U;
+        rhat += (unsigned) (v >> 32);
+        if ((unsigned) (rhat >> 32) != 0U) break;
+    }
+
+    q0 = (unsigned) (qhat & ~0U);
+
+    if (r != NULL)                  // If remainder is wanted, return it.
+        *r = (((uhat << 32) | (unsigned) (u0 & ~0U)) - q0 * v) >> s;
+
+    return ((unsigned long long) q1 << 32) | q0;
+}
+
+#endif
+
 uint32_t twr_big_get32u(struct twr_bigint * big) {
 		return big->word[0];
 }
@@ -615,9 +739,9 @@ int twr_big_2log(struct twr_bigint * numin, struct twr_bigint * denin) {
 uint32_t twr_big_num10digits(struct twr_bigint * numberin) {
 	if (twr_big_iszero(numberin)) return 1;
 
-	struct twr_bigint denominator;
-	twr_big_assign32u(&denominator, 1);
-	return twr_big_10log(numberin, &denominator)+1;
+	struct twr_bigint one;
+	twr_big_assign32u(&one, 1);
+	return twr_big_10log(numberin, &one)+1;
 }
 	/*
 	int count = 0; 
@@ -1010,6 +1134,8 @@ int twr_big_run_unit_tests() {
 	if (!twr_big_isequal32u(&big, 5)) return 0;
 	twr_big_5pow(&big, 13);
 	if (!twr_big_isequal32u(&big, 1220703125)) return 0;
+
+	
 
 	return 1;
 
