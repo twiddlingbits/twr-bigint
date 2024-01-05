@@ -93,7 +93,7 @@ int twr_big_islt(struct twr_bigint* big1, struct twr_bigint* big2) {
 	return twr_big_isgt(big2, big1);
 }
 
-/* return 1 if overflow; otherwise 0*/
+/* return 1 if overflow; otherwise 0 */
 int twr_big_2pow(struct twr_bigint * big, int exp) {
 	assert(exp>=0);
 	if (exp >=  (int)(BIG_INT_WORD_COUNT*32)) return 1;
@@ -116,7 +116,7 @@ void twr_big_assign64u(struct twr_bigint* big, uint64_t ui) {
 	if (big->word[1]==0) big->len--;
 }
 
-/** 128bit is uh<<64 | ul*/
+/** 128bit is uh<<64 | ul **/
 void twr_big_assign128u(struct twr_bigint* big, uint64_t uh, uint64_t ul) {
 	big->len=4;
 	big->word[0]=ul&0xFFFFFFFF;
@@ -288,7 +288,7 @@ int twr_big_5pow(struct twr_bigint * big, int exp) {
 	return 0;
 }
 
-/** 0 if no error; 1 if bit(s) lost  (words shifted out of end) */
+/** 0 if no error; 1 if bit(s) lost  (words shifted out of end) **/
 int twr_big_shiftleft_words(struct twr_bigint * big, unsigned int n) {
 
 	if (n==0) return 0;
@@ -315,8 +315,8 @@ int twr_big_shiftleft_words(struct twr_bigint * big, unsigned int n) {
 	int dest=big->len-1;
 	int src=dest-n;
 
-/** these are words that didn't get touched below because they would be moved outside  */
-/** a non zero word here means bits were lost in the shift */
+/** these are words that didn't get touched below because they would be moved outside  **/
+/** a non zero word here means bits were lost in the shift **/
 	for (int i=src+1; i<dest; i++) {
 		// if (big->word[i]!=0) lostbits=1; unused storage due to big->len
 		big->word[i]=0;
@@ -335,7 +335,7 @@ int twr_big_shiftleft_words(struct twr_bigint * big, unsigned int n) {
 	return lostbits;
 }
 
-/** 0 if no error; 1 if bit(s) lost  (non-zero words shift out end) */
+/** 0 if no error; 1 if bit(s) lost  (non-zero words shift out end) **/
 int twr_big_shiftright_words(struct twr_bigint * big, unsigned int n) {
 	if (n==0) return 0;
 
@@ -353,8 +353,8 @@ int twr_big_shiftright_words(struct twr_bigint * big, unsigned int n) {
 
 	int dest=0;
 	int src=n;
-	/** these are words that didn't get touched below beacuse they would be moved outside  */
-	/** a non zero word here means bits were lost in the shift */
+	/** these are words that didn't get touched below beacuse they would be moved outside  **/
+	/** a non zero word here means bits were lost in the shift **/
 	for (int i=dest+move; i<=(src-1); i++) {
 		if (big->word[i]!=0) lostbits=1;
 		// big->word[i]=0;
@@ -833,7 +833,7 @@ int twr_big_10log(struct twr_bigint * numin, struct twr_bigint * denin) {
 
 	if (twr_big_isequal(numin, denin)) return 0;
 
-	if (twr_big_isgteq(numin, denin)) { /** >=1 */
+	if (twr_big_isgteq(numin, denin)) { /* >=1 */
 		struct twr_bigint den, den10;
 		twr_big_assign(&den, denin);
 
@@ -876,7 +876,7 @@ int twr_big_2log(struct twr_bigint * numin, struct twr_bigint * denin) {
 
 	if (twr_big_isequal(numin, denin)) return 0;
 
-	if (twr_big_isgt(numin, denin)) { /** >1 */
+	if (twr_big_isgt(numin, denin)) { /* >1 */
 		struct twr_bigint den, den2;
 		twr_big_assign(&den, denin);
 
@@ -986,7 +986,7 @@ int twr_big_itoa(struct twr_bigint * valuein, char * buffer, int size, int radix
 	twr_big_assign32u(&den, 1);
 	twr_big_assign32u(&radix, radixin);
 
-/** big currently doesnt support negative numbers */
+/** big currently doesnt support negative numbers **/
 //	if (value<0) {
 //		value=-value;
 //		if (size < 3) return 1;  /* error - buffer too small */
