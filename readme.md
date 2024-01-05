@@ -2,7 +2,7 @@
 
 twr-bigint.c, twr-bigint.h
 
-A big integer, or bigint, is an integer of an arbitrary large number of bits.
+This big integer code allows operations on an integer of an arbitrary large number of bits.
 
 This implementation of an unsigned big integer has the following benefits:
    - easy to incorporate into your project
@@ -24,8 +24,6 @@ See factorial.c for a simple example.
 Functions are available for multiplication, division, addition, subtraction, bit manipulation, base 10 and 2 integer logarithms, power (exponent), digit counting, text conversion (for printing or inputting ASCII), and comparison.
 
 The bigint is an array of 32 bit words of arbitrary length.  This implementation uses a fix size bigint.  You can change the size in the bigint.h file.  This method was helpful for use with my wasm crt since it allows bigints that don't use malloc.  This also allows bigint to be implemented without depending on a crt (c runtime library) and makes it easy to allocate bigints on the stack.
-
-Although I paid attention to execution speed when I wrote this, it wasn't my primary focus and there may be more speed optimized bigints available.
 
 ## Makefile
 The GNU makefile will build the unit tests and the factorial example.

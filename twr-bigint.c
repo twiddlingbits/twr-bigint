@@ -1,6 +1,8 @@
 /* Copyright 2023 Anthony J. Wood */
 /* Okay to use under MIT license */
 
+/* except div code is Knuth's Algorithm D from Hacker's Delight */
+
 #include "twr-bigint.h"
 #include <assert.h>
 
