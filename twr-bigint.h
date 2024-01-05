@@ -10,11 +10,16 @@
 
 struct twr_bigint {
 	uint32_t word[BIG_INT_WORD_COUNT];
+	unsigned int len;
 };
 
 #define BIGINT_LOG_OFZERO_ERROR INT32_MIN
 
+unsigned int twr_big_get_length(struct twr_bigint * big);
+uint32_t twr_big_get_word(struct twr_bigint * big, unsigned int n);
+
 void twr_big_bzero(struct twr_bigint* big);
+void twr_big_bzero_long(struct twr_bigint * big, unsigned int len);
 void twr_big_bmax(struct twr_bigint* big);
 
 int twr_big_iszero(struct twr_bigint* big);
@@ -36,7 +41,7 @@ int twr_big_10log(struct twr_bigint* numin, struct twr_bigint* denin);
 void twr_big_assign(struct twr_bigint* dest, struct twr_bigint* source);
 void twr_big_assign32u(struct twr_bigint* big, uint32_t ui);
 void twr_big_assign64u(struct twr_bigint* big, uint64_t ui);
-void twr_big_assign128u(struct twr_bigint* big, uint64_t u1, uint64_t u2);
+void twr_big_assign128u(struct twr_bigint* big, uint64_t uh, uint64_t ul);
 uint32_t twr_big_get32u(struct twr_bigint* big);
 
 struct twr_bigint* twr_big_min(struct twr_bigint* a, struct twr_bigint* b);
@@ -57,7 +62,7 @@ int twr_big_add32u(struct twr_bigint* sum, struct twr_bigint * addend1, uint32_t
 void twr_big_sub(struct twr_bigint* r, struct twr_bigint* a, struct twr_bigint* b);
 int twr_big_mult(struct twr_bigint* product, struct twr_bigint* multiplicand, struct twr_bigint* multipler);
 int twr_big_mult32u(struct twr_bigint* product, struct twr_bigint* multiplicand, uint32_t multipler);
-void twr_big_div(struct twr_bigint* q, struct twr_bigint* r, struct twr_bigint* num, struct twr_bigint* den);
+int twr_big_div(struct twr_bigint* q, struct twr_bigint* r, struct twr_bigint* num, struct twr_bigint* den);
 
 int twr_big_itoa(struct twr_bigint * valuein, char* buffer, int size, int radixin);
 int twr_big_atoi(const char *str, struct twr_bigint* result);

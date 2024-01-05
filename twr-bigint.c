@@ -4,60 +4,79 @@
 #include "twr-bigint.h"
 #include <assert.h>
 
-static int get_used_word_count(struct twr_bigint * bi) {
-	int i=BIG_INT_WORD_COUNT-1;
-	while (i>0 && bi->word[i]==0) i--;
-	return i+1;
+#define max(x, y) ((x) > (y) ? (x) : (y))
+
+unsigned int twr_big_get_length(struct twr_bigint * big) {
+	return big->len;
+}
+
+uint32_t twr_big_get_word(struct twr_bigint * big, unsigned int n) {
+	if ( n >= big->len ) return 0;
+	else return big->word[n];
 }
 
 void twr_big_bzero(struct twr_bigint * big) {
-	for (int i=0; i<BIG_INT_WORD_COUNT; i++)
+	big->len=1;
+	big->word[0]=0;
+}
+
+void twr_big_bzero_long(struct twr_bigint * big, unsigned int len) {
+	assert(len<=BIG_INT_WORD_COUNT);
+	for (unsigned int i=0; i<len; i++)
 		big->word[i]=0;
+	big->len=len;
 }
 
 void twr_big_bmax(struct twr_bigint * big) {
 	for (int i=0; i<BIG_INT_WORD_COUNT; i++)
 		big->word[i]=UINT32_MAX;
+	big->len=BIG_INT_WORD_COUNT;
 }
 
 int twr_big_iszero(struct twr_bigint * big) {
-	for (int i=0; i<BIG_INT_WORD_COUNT; i++)
+	for (unsigned int i=0; i<big->len; i++)
 		if (big->word[i]) return 0;
 
 	return 1;
 }
 
 int twr_big_isequal(struct twr_bigint * big1, struct twr_bigint * big2) {
-	for (int i=0; i<BIG_INT_WORD_COUNT; i++)
-		if (big1->word[i]!=big2->word[i]) return 0;
+	unsigned int len=max(big1->len, big2->len);
+	for (unsigned int i=0; i<len; i++) {
+		const uint32_t a=twr_big_get_word(big1, i);
+		const uint32_t b=twr_big_get_word(big2, i);
+		if (a!=b) return 0;
+	}
 
 	return 1;
 }
 
-int twr_big_isequal32u(struct twr_bigint * big1, uint32_t i32) {
-	if (big1->word[0]!= i32) return 0;
-	for (int i=1; i<BIG_INT_WORD_COUNT; i++)
-		if (big1->word[i]!=0) return 0;
-
-	return 1;
+int twr_big_isequal32u(struct twr_bigint * big, uint32_t i32) {
+	if (big->word[0]==i32 && big->len==1) return 1;
+	else return 0;
 }
 
 /* big1 >= big2 */
 int twr_big_isgteq(struct twr_bigint * big1, struct twr_bigint * big2) {
-
-	for (int i=BIG_INT_WORD_COUNT-1; i>=0; i--) {
-		if (big1->word[i]==big2->word[i]) continue;
-		if (big1->word[i]>big2->word[i]) return 1; else return 0;
+	int len=max(big1->len, big2->len);
+	for (int i=len-1; i>=0; i--) {
+		const uint32_t a=twr_big_get_word(big1, i);
+		const uint32_t b=twr_big_get_word(big2, i);
+		if (a==b) continue;
+		if (a>b) return 1; else return 0;
 	}
 
 	return 1;
 }
 
 int twr_big_isgt(struct twr_bigint * big1, struct twr_bigint * big2) {
+	int len=max(big1->len, big2->len);
 
-	for (int i=BIG_INT_WORD_COUNT-1; i>=0; i--) {
-		if (big1->word[i]==big2->word[i]) continue;
-		if (big1->word[i] > big2->word[i]) return 1; else return 0;
+	for (int i=len-1; i>=0; i--) {
+		const uint32_t a=twr_big_get_word(big1, i);
+		const uint32_t b=twr_big_get_word(big2, i);
+		if (a==b) continue;
+		if (a > b) return 1; else return 0;
 	}
 
 	return 0;
@@ -75,35 +94,50 @@ int twr_big_islt(struct twr_bigint* big1, struct twr_bigint* big2) {
 /* return 1 if overflow; otherwise 0*/
 int twr_big_2pow(struct twr_bigint * big, int exp) {
 	assert(exp>=0);
-	if (exp >=  BIG_INT_WORD_COUNT*32) return 1;
-	twr_big_bzero(big);
-	big->word[exp/32]=1<<(exp%32);
+	if (exp >=  (int)(BIG_INT_WORD_COUNT*32)) return 1;
+	const unsigned int word=exp/32;
+	twr_big_bzero_long(big, word+1);
+	big->word[word]=1<<(exp%32);
 
 	return 0;
 }
 
 void twr_big_assign32u(struct twr_bigint* big, uint32_t ui) {
-	twr_big_bzero(big);
+	big->len=1;
 	big->word[0]=ui;
 }
 
 void twr_big_assign64u(struct twr_bigint* big, uint64_t ui) {
-	twr_big_bzero(big);
+	big->len=2;
 	big->word[0]=ui&0xFFFFFFFF;
 	big->word[1]=ui>>32;
+	if (big->word[1]==0) big->len--;
 }
 
-void twr_big_assign128u(struct twr_bigint* big, uint64_t u1, uint64_t u2) {
-	twr_big_bzero(big);
-	big->word[0]=u2&0xFFFFFFFF;
-	big->word[1]=u2>>32;
-	big->word[2]=u1&0xFFFFFFFF;
-	big->word[3]=u1>>32;
+/** 128bit is uh<<64 | ul*/
+void twr_big_assign128u(struct twr_bigint* big, uint64_t uh, uint64_t ul) {
+	big->len=4;
+	big->word[0]=ul&0xFFFFFFFF;
+	big->word[1]=ul>>32;
+	big->word[2]=uh&0xFFFFFFFF;
+	big->word[3]=uh>>32;
+
+	if (big->word[3]==0) {
+		big->len--;
+		if (big->word[2]==0) {
+			big->len--;
+			if (big->word[1]==0) {
+				big->len--;
+			}
+		}
+	}
 }
 
 void twr_big_assign(struct twr_bigint* dest, struct twr_bigint* source) {
-	for (int i=0; i<BIG_INT_WORD_COUNT; i++)
+	assert(source->len<=BIG_INT_WORD_COUNT);
+	for (unsigned int i=0; i<source->len; i++)
 		dest->word[i]=source->word[i];
+	dest->len=source->len;
 }
 
 struct twr_bigint* twr_big_min(struct twr_bigint* a, struct twr_bigint* b)
@@ -118,15 +152,24 @@ struct twr_bigint* twr_big_max(struct twr_bigint* a, struct twr_bigint* b)
 
 int twr_big_mult32u(struct twr_bigint * product, struct twr_bigint * multiplicand, uint32_t multipler) {
 
-	uint32_t carry=0;
+	uint32_t i, carry=0;
 
-	for (int i=0; i<BIG_INT_WORD_COUNT; i++) {
+	for (i=0; i<multiplicand->len; i++) {
 		uint64_t partialprodcut=(uint64_t)multipler*multiplicand->word[i];
 		partialprodcut+=carry;
 		product->word[i]=partialprodcut&0xFFFFFFFF;
 		carry=partialprodcut>>32;
 	}	
 
+	if (carry) {
+		if (multiplicand->len < BIG_INT_WORD_COUNT) {
+			product->word[i]=carry;
+			i++;
+			carry=0;
+		}
+	}
+
+	product->len=i;
 	return carry;
 }
 
@@ -205,7 +248,7 @@ int twr_big_10pow(struct twr_bigint * big, int exp) {
 	assert(exp>=0);
 
 	if (exp<10) {
-		twr_big_assign64u(big, pow10_u32(exp));
+		twr_big_assign32u(big, pow10_u32(exp));
 		return 0;
 	}
 
@@ -243,36 +286,46 @@ int twr_big_5pow(struct twr_bigint * big, int exp) {
 	return 0;
 }
 
-/** 0 if no error; 1 if bit(s) lost  (non-zero words shift out end) */
-int twr_big_shiftleft_words(struct twr_bigint * bi, unsigned int n) {
+/** 0 if no error; 1 if bit(s) lost  (words shifted out of end) */
+int twr_big_shiftleft_words(struct twr_bigint * big, unsigned int n) {
 
 	if (n==0) return 0;
 
-	int lostbits = (n>=BIG_INT_WORD_COUNT);
-	if (lostbits) {
-		twr_big_bzero(bi);
-		return lostbits;
+	if (n>=BIG_INT_WORD_COUNT) {
+		twr_big_bzero(big);
+		return 1;
 	}
 
-	int move=BIG_INT_WORD_COUNT-n;
-	assert (move >= 1 && move < BIG_INT_WORD_COUNT);
+	int lostbits = ( n+big->len > BIG_INT_WORD_COUNT );
+	if (lostbits) {
+		big->len=BIG_INT_WORD_COUNT;
+	}
+	else {
+		big->len+=n;
+	}
 
-	int dest=BIG_INT_WORD_COUNT-1;
+	assert(big->len<=BIG_INT_WORD_COUNT);
+	assert(n<BIG_INT_WORD_COUNT);
+
+	unsigned int move=big->len-n;
+	assert (move >= 1 && move < big->len);
+
+	int dest=big->len-1;
 	int src=dest-n;
 
-/** these are words that didn't get touched below beacuse they would be moved outside the word */
+/** these are words that didn't get touched below because they would be moved outside  */
 /** a non zero word here means bits were lost in the shift */
 	for (int i=src+1; i<dest; i++) {
-		if (bi->word[i]!=0) lostbits=1;
-		bi->word[i]=0;
+		// if (big->word[i]!=0) lostbits=1; unused storage due to big->len
+		big->word[i]=0;
 	}
 
-	for (unsigned int i=0; i < n; i++)
-	if (bi->word[BIG_INT_WORD_COUNT-1-i]!=0) lostbits=1;
+	//for (unsigned int i=0; i < n; i++)
+	//	if (big->word[BIG_INT_WORD_COUNT-1-i]!=0) lostbits=1;  not needed due to big->maxlen
 
 	while (move--) {
-		bi->word[dest--]=bi->word[src];
-		bi->word[src--]=0;
+		big->word[dest--]=big->word[src];
+		big->word[src--]=0;
 	}
 
 	assert(src==-1);
@@ -281,65 +334,80 @@ int twr_big_shiftleft_words(struct twr_bigint * bi, unsigned int n) {
 }
 
 /** 0 if no error; 1 if bit(s) lost  (non-zero words shift out end) */
-int twr_big_shiftright_words(struct twr_bigint * bi, unsigned int n) {
-
+int twr_big_shiftright_words(struct twr_bigint * big, unsigned int n) {
 	if (n==0) return 0;
 
-	int lostbits = (n>=BIG_INT_WORD_COUNT);
+	int lostbits = ( n >= big->len );
 	if (lostbits) {
-		twr_big_bzero(bi);
+		lostbits=!twr_big_iszero(big);
+		twr_big_bzero(big);
 		return lostbits;
 	}
 
-	int move=BIG_INT_WORD_COUNT-n;
+	assert(n < big->len);
+
+	int move=big->len-n;
 	assert (move >= 1 && move < BIG_INT_WORD_COUNT);
 
 	int dest=0;
 	int src=n;
-	/** these are words that didn't get touched below beacuse they would be moved outside the word */
+	/** these are words that didn't get touched below beacuse they would be moved outside  */
 	/** a non zero word here means bits were lost in the shift */
 	for (int i=dest+move; i<=(src-1); i++) {
-		if (bi->word[i]!=0) lostbits=1;
-		bi->word[i]=0;
+		if (big->word[i]!=0) lostbits=1;
+		// big->word[i]=0;
 	}
 
 for (unsigned int i=0; i < n; i++)
-	if (bi->word[i]!=0) lostbits=1;
+	if (big->word[i]!=0) lostbits=1;
 
 /* move words */
 	while (move--) {
-		bi->word[dest++]=bi->word[src];
-		bi->word[src++]=0;
+		big->word[dest++]=big->word[src++];
+		//big->word[src++]=0;
 	}
 
-	assert(src==BIG_INT_WORD_COUNT);
+	assert((unsigned int)src==big->len);
+
+	big->len=big->len-n;
 
 	return lostbits;
 }
 
 
-int twr_big_shiftleft_onebit(struct twr_bigint * bi) {
+int twr_big_shiftleft_onebit(struct twr_bigint * big) {
 	int carry=0;
 
-	for (int i=0; i<BIG_INT_WORD_COUNT; i++) {
-		int t=bi->word[i]&(1<<31);
-		bi->word[i]<<=1;
-		if (carry) bi->word[i]|=1;
+	for (unsigned int i=0; i<big->len; i++) {
+		int t=big->word[i]&(1<<31);
+		big->word[i]<<=1;
+		if (carry) big->word[i]|=1;
 		carry=t;
 	}
+
+	if (carry) {
+		if (big->len<BIG_INT_WORD_COUNT) {
+			big->word[big->len]=1;
+			big->len++;
+			return 0;
+		}
+	}
+
 	return carry;
 }
 
 /* returns 1 if bit lost */
-int twr_big_shiftright_onebit(struct twr_bigint * bi) {
+int twr_big_shiftright_onebit(struct twr_bigint * big) {
 	int carry;
-	int bitzero=bi->word[0]&1;
-	for (int i=0; i<BIG_INT_WORD_COUNT-1; i++) {
-		carry=bi->word[i+1]&1;
-		bi->word[i]>>=1;
-		if (carry) bi->word[i]|=(1<<31);
+	int bitzero=big->word[0]&1;
+	for (unsigned int i=0; i<big->len-1; i++) {
+		carry=big->word[i+1]&1;
+		big->word[i]>>=1;
+		if (carry) big->word[i]|=(1<<31);
 	}
-	bi->word[BIG_INT_WORD_COUNT-1]>>=1;
+	big->word[big->len-1]>>=1;
+	if (big->word[big->len-1]==0 && big->len>1)
+		big->len--;
 
 	return bitzero;
 }
@@ -362,14 +430,20 @@ int twr_big_shiftright_bits(struct twr_bigint * bi, unsigned int n) {
 	return lostbits;
 }
 
-void twr_big_set_bit(struct twr_bigint * big, unsigned int bitnum, unsigned int val) {
+void twr_big_set_bit(struct twr_bigint * big, const unsigned int bitnum, const unsigned int val) {
+	assert(bitnum/32 < BIG_INT_WORD_COUNT);
+
 	if (val)
 		big->word[bitnum/32]|=(1<<(bitnum%32));
 	else
 		big->word[bitnum/32]&=(~(1<<(bitnum%32)));
+
+	if (bitnum/32 >= big->len)
+		big->len=bitnum/32+1;
 }
 
 int twr_big_get_bit(struct twr_bigint * big, unsigned int bitnum) {
+	if (bitnum/32 >= big->len) return 0;
 	if (big->word[bitnum/32]&(1<<(bitnum%32)))
 		return 1;
 	else
@@ -379,9 +453,11 @@ int twr_big_get_bit(struct twr_bigint * big, unsigned int bitnum) {
 int twr_big_add(struct twr_bigint * sum, struct twr_bigint * addend1, struct twr_bigint * addend2) {
 	uint32_t carry=0, tc, s;
 
-	for (int i=0; i<BIG_INT_WORD_COUNT; i++) {
-		const uint32_t a=addend1->word[i];
-		const uint32_t b=addend2->word[i];
+	unsigned int i, len = max(addend1->len, addend2->len);
+
+	for (i=0; i<len; i++) {
+		const uint32_t a=twr_big_get_word(addend1, i);
+		const uint32_t b=twr_big_get_word(addend2, i);
 
 		s=a+b;
 		if ( s < a ) tc=1; else tc=0;  /* overflow? */
@@ -392,31 +468,68 @@ int twr_big_add(struct twr_bigint * sum, struct twr_bigint * addend1, struct twr
 		sum->word[i]=s;
 	}
 
+	if (carry) {
+		if (len < BIG_INT_WORD_COUNT) {
+			sum->word[i]=carry;
+			i++;
+			carry=0;
+		}
+	}
+
+	sum->len=i;
+
+	// shrink if results have trailing zeros (if a subtract, or rolled over)
+	for (int i=(int)sum->len-1; i>0; i--) 
+		if (sum->word[i]==0) 
+			sum->len--;
+		else
+			break;
+
 	return carry;
 }
 
 
 int twr_big_add32u(struct twr_bigint * sum, struct twr_bigint *addend1 , uint32_t b) {
-	uint32_t carry, s;
+	uint32_t i, carry, s;
 
 	const uint32_t a=addend1->word[0];
 	s=a+b;
 	if ( s < a ) carry=1; else carry=0;  	/* overflow? */
 	sum->word[0]=s;
 
-	for (int i=1; i<BIG_INT_WORD_COUNT; i++) {
+	for (i=1; i<addend1->len; i++) {
 		const uint32_t a=addend1->word[i];
 		s=a+carry;
 		if (s<carry) carry=1; else carry=0;   /* overflow? */
 		sum->word[i]=s;
 	}
 
+	if (carry) {
+		if (addend1->len < BIG_INT_WORD_COUNT) {
+			sum->word[i]=carry;
+			i++;
+			carry=0;
+		}
+	}
+
+	sum->len=i;
+
+	// shrink if results have trailing zeros (if rolled over)
+	for (int i=(int)sum->len-1; i>0; i--) 
+		if (sum->word[i]==0) 
+			sum->len--;
+		else
+			break;
+
 	return carry;
 }
 
 void twr_big_complement(struct twr_bigint * result, struct twr_bigint * in) {
-	for (int i=0; i<BIG_INT_WORD_COUNT; i++) 
+	for (unsigned int i=0; i<in->len; i++) 
 		result->word[i]=~(in->word[i]);
+	for (unsigned int i=in->len; i<BIG_INT_WORD_COUNT; i++) 
+		result->word[i]=~(0);
+	result->len=BIG_INT_WORD_COUNT;
 }
 
 /* r = a - b */
@@ -468,9 +581,7 @@ int twr_big_mult(struct twr_bigint * product, struct twr_bigint * multiplicand, 
 
 	twr_big_bzero(tp);
 
-	const int wc=get_used_word_count(multipler);
-
-	for (int i=0; i<wc; i++) {
+	for (unsigned int i=0; i<multipler->len; i++) {
 		if (twr_big_mult32u(&t, multiplicand, multipler->word[i])) return 1;
 		if (twr_big_shiftleft_words(&t, i)) return 1;
 		if (twr_big_add(tp, tp, &t)) return 1;
@@ -482,6 +593,7 @@ int twr_big_mult(struct twr_bigint * product, struct twr_bigint * multiplicand, 
 	return 0;
 }
 
+#if 0
 void twr_big_div_slow(struct twr_bigint * q, struct twr_bigint * r, struct twr_bigint * num, struct twr_bigint * den) {
 	struct twr_bigint qt;
 	struct twr_bigint rt;
@@ -507,7 +619,7 @@ void twr_big_div_slow(struct twr_bigint * q, struct twr_bigint * r, struct twr_b
 	end
 	*/
 
-	for (int i=get_used_word_count(num)*32-1; i>=0; i--) {
+	for (int i=twr_big_get_length(num)*32-1; i>=0; i--) {
 		twr_big_shiftleft_onebit(r);
 		twr_big_set_bit(r, 0, twr_big_get_bit(num, i));
 		if (twr_big_isgteq(r, den)) {
@@ -517,6 +629,7 @@ void twr_big_div_slow(struct twr_bigint * q, struct twr_bigint * r, struct twr_b
 	}
 	twr_big_assign(q, &qt);
 }
+#endif
 
 /**********************************************/
 /**********************************************/
@@ -528,8 +641,6 @@ n-m+1-word quotient and m-word remainder. The bignums are in arrays of
 words. Here a "word" is 32 bits. This routine is designed for a 64-bit
 machine which has a 64/64 division instruction. */
 
-
-#define max(x, y) ((x) > (y) ? (x) : (y))
 
 static int nlz(unsigned x) {
    int n;
@@ -654,40 +765,31 @@ again:
    return 0;
 }
 
-void twr_big_div(struct twr_bigint * q, struct twr_bigint * r, struct twr_bigint * num, struct twr_bigint * den) {
+/* returns zero if no error */
+int twr_big_div(struct twr_bigint * q, struct twr_bigint * r, struct twr_bigint * num, struct twr_bigint * den) {
  //  3. The dividend (num) u, m words, m >= 1.
 //   4. The divisor (den) v, n words, n >= 2.
 
-	int m=get_used_word_count(num);
-	int n=get_used_word_count(den);
+	const int m=num->len;
+	const int n=den->len;
 
-	assert(m>=n);
+	struct twr_bigint *qt, qtspace;  
 
-	struct twr_bigint qt;  //!!!!!! use Only if needed
+	if (q==num || q==den)
+		qt=&qtspace;
+	else qt=q;
 
-	//if (r) twr_big_bzero(r);
-
-	if (twr_big_iszero(den)) {
-		twr_big_bmax(q);
-		return;
-	}
-
-	//twr_big_bzero(&qt);
-
-	int success=divmnu(qt.word, r?r->word:0, num->word, den->word,  m, n);
-	assert(success==0);
-	twr_big_assign(q, &qt);  // !!!!just copy the needed part!!!!!!
+	int error=divmnu(qt->word, r?r->word:0, num->word, den->word,  m, n);
+	if (error) return 1;
 
    //1. Space q for the quotient, m - n + 1 words (at least one).
    //2. Space r for the remainder (optional), n words.
-	for (int i=m-n+1; i < BIG_INT_WORD_COUNT; i++)
-		q->word[i]=0;
 
-	if (r) {
-		for (int i=n; i < BIG_INT_WORD_COUNT; i++)
-			r->word[i]=0;
-	}
+	if (r) r->len=n;
+	qt->len=m-n+1;
+	if (qt!=q) *q=*qt;
 
+	return 0;
 }
 
 /**************************************************************/
@@ -700,10 +802,7 @@ uint32_t twr_big_get32u(struct twr_bigint * big) {
 }
 
 int twr_big_isint32u(struct twr_bigint * big) {
-	for (int i=1; i < BIG_INT_WORD_COUNT; i++)
-		if (big->word[i]>0) return 0;
-
-	return 1;
+	return big->len==1;
 }
 
 /* returns the log (rounded to an integer) for the passed in fraction  numin/denin */
@@ -837,7 +936,7 @@ uint32_t twr_big_num10digits(struct twr_bigint * numberin) {
 	if (twr_big_isint32u(numberin))
 		return log10_u32(twr_big_get32u(numberin))+1;
 
-	if (get_used_word_count(numberin)==2) {
+	if (numberin->len==2) {
 		uint64_t ui64=(((uint64_t)numberin->word[1])<<32)|numberin->word[0];
 		return log10_u64(ui64)+1;
 	}
@@ -880,8 +979,10 @@ int twr_big_itoa(struct twr_bigint * valuein, char * buffer, int size, int radix
 
 	while (1) {
 		if (i>=(size-1)) return 1; /* error - buffer too small */
-		twr_big_div(&value, &rem, valuein, &den);  		// vaue=value/radix
-		twr_big_div(&value, &rem, &value, &radix);  		// digit=value%radix;
+		int error=twr_big_div(&value, &rem, valuein, &den);  		// vaue=value/radix
+		assert(!error);
+		error=twr_big_div(&value, &rem, &value, &radix);  		// digit=value%radix;
+		assert(!error);
 		int overflow=twr_big_mult32u(&den, &den, radixin);
 		assert(!overflow);
 		buffer[i++]=digitchars[rem.word[0]];
@@ -922,13 +1023,48 @@ int twr_big_run_unit_tests() {
 	if (!twr_big_isequal32u(&a, 0)) return 0;
 	if (twr_big_isequal32u(&a, 1)) return 0;
 
+	twr_big_assign32u(&a, 1);
+	if (twr_big_shiftleft_words(&a, 1)) return 0;
+	if (a.len!=2) return 0;
+	if (a.word[0]!=0 || a.word[1]!=1) return 0;
 
 	twr_big_assign64u(&a, 1ULL<<32 | 1);
 	if (twr_big_isequal32u(&a, 1)) return 0;
 	if (!twr_big_shiftleft_words(&a, BIG_INT_WORD_COUNT-1)) return 0;
+	if (a.word[BIG_INT_WORD_COUNT-1]!=1) return 0;
+	if (a.word[0]!=0 || a.word[1]!=0 || a.word[2]!=0) return 0;
+
+	twr_big_assign64u(&a, 1);
+	if (a.len!=1) return 0;
+
+	twr_big_assign128u(&a, 1,1);
+	if (a.len!=3) return 0;
+
+	twr_big_assign128u(&a, 0, 1);
+	if (a.len!=1) return 0;
 
 	twr_big_2pow(&a, BIG_INT_WORD_COUNT*32-1);  // set high bit
 	if (!twr_big_shiftleft_words(&a, 1)) return 0;
+	if (!twr_big_iszero(&a)) return 0;
+
+	twr_big_bmax(&a);
+	if (!twr_big_shiftleft_words(&a, 1)) return 0;
+	if (a.word[0]!=0) return 1;
+	if (0==a.word[BIG_INT_WORD_COUNT-1]) return 1;
+	if (BIG_INT_WORD_COUNT!=a.len) return 1;
+
+	twr_big_bmax(&a);
+	twr_big_assign32u(&a, 1);
+	if (!twr_big_shiftleft_words(&a, BIG_INT_WORD_COUNT)) return 0;
+	if (!twr_big_iszero(&a)) return 0;
+
+	twr_big_bmax(&a);
+	twr_big_assign32u(&a, 1);
+	if (!twr_big_shiftleft_words(&a, BIG_INT_WORD_COUNT+1)) return 0;
+	if (!twr_big_iszero(&a)) return 0;
+
+	twr_big_assign32u(&a, 0);
+	if (twr_big_shiftleft_onebit(&a)) return 0;
 	if (!twr_big_iszero(&a)) return 0;
 
 	twr_big_2pow(&a, BIG_INT_WORD_COUNT*32-1);  // set high bit
@@ -942,9 +1078,13 @@ int twr_big_run_unit_tests() {
 
 	twr_big_2pow(&a, BIG_INT_WORD_COUNT*32-1);  // set high bit
 	if (twr_big_shiftright_words(&a, BIG_INT_WORD_COUNT-1)) return 0;
+	if (twr_big_get_word(&a, BIG_INT_WORD_COUNT-1)) return 0;
+	if (!twr_big_get_word(&a, 0)) return 0;
 
 	twr_big_assign32u(&a,  1<<31);
 	if (!twr_big_shiftright_words(&a, 1)) return 0;
+	if (0!=a.word[0]) return 0;
+	if (a.len!=1) return 0;
 
 	twr_big_assign32u(&b, 1);
 	twr_big_bmax(&a);
@@ -990,7 +1130,7 @@ int twr_big_run_unit_tests() {
 	if (!twr_big_mult32u(&c, &b, 2)) return 0;
 
 	twr_big_assign64u(&b, UINT64_MAX);
-	twr_big_mult(&c, &a, &b);
+	if (twr_big_mult(&c, &a, &b)) return 0;
 	twr_big_assign128u(&a, 0xfffffffffffffffeULL, 0x0000000000000001ULL);
 	if (!twr_big_isequal(&a, &c)) return 0;
 	twr_big_2pow(&c, 51);
@@ -1008,17 +1148,17 @@ int twr_big_run_unit_tests() {
 	if (!twr_big_isequal(&a, &b)) return 0;
 
 	twr_big_assign128u(&a, (uint64_t)0x0123456789ABCDEF, (uint64_t)0xFEDCBA9876543210);
-	if (a.word[0]!=0x76543210) return 0;
-	if (a.word[1]!=0xFEDCBA98) return 0;
-	if (a.word[2]!=0x89ABCDEF) return 0;
-	if (a.word[3]!=0x01234567) return 0;
+	if (twr_big_get_word(&a, 0x76543210)) return 0;
+	if (twr_big_get_word(&a,0xFEDCBA98)) return 0;
+	if (twr_big_get_word(&a,0x89ABCDEF)) return 0;
+	if (twr_big_get_word(&a,0x01234567)) return 0;
 	twr_big_assign128u(&a, 0, 0);
 	if (!twr_big_iszero(&a)) return 0;
 
 
 	twr_big_assign64u(&a, (uint64_t)0xFEDCBA9876543210);
-	if (a.word[0]!=0x76543210) return 0;
-	if (a.word[1]!=0xFEDCBA98) return 0;
+	if (twr_big_get_word(&a,0x76543210)) return 0;
+	if (twr_big_get_word(&a,0xFEDCBA98)) return 0;
 	twr_big_assign64u(&a, 0);
 
 	twr_big_bmax(&b);
