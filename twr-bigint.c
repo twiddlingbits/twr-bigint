@@ -478,7 +478,7 @@ int twr_big_add(struct twr_bigint * sum, struct twr_bigint * addend1, struct twr
 
 	sum->len=i;
 
-	// shrink if results have trailing zeros (if a subtract, or rolled over)
+	// shrink if results have leading zeros (if a subtract, or rolled over)
 	for (int i=(int)sum->len-1; i>0; i--) 
 		if (sum->word[i]==0) 
 			sum->len--;
@@ -514,7 +514,7 @@ int twr_big_add32u(struct twr_bigint * sum, struct twr_bigint *addend1 , uint32_
 
 	sum->len=i;
 
-	// shrink if results have trailing zeros (if rolled over)
+	// shrink if results have leading zeros (if rolled over)
 	for (int i=(int)sum->len-1; i>0; i--) 
 		if (sum->word[i]==0) 
 			sum->len--;
@@ -785,9 +785,25 @@ int twr_big_div(struct twr_bigint * q, struct twr_bigint * r, struct twr_bigint 
    //1. Space q for the quotient, m - n + 1 words (at least one).
    //2. Space r for the remainder (optional), n words.
 
-	if (r) r->len=n;
 	qt->len=m-n+1;
 	if (qt!=q) *q=*qt;
+
+	// shrink if results have leading zeros 
+	for (int i=(int)q->len-1; i>0; i--) 
+		if (q->word[i]==0) 
+			q->len--;
+		else
+			break;
+
+	if (r) {
+		r->len=n;
+
+		for (int i=(int)r->len-1; i>0; i--) 
+			if (r->word[i]==0) 
+				r->len--;
+			else
+				break;
+	}
 
 	return 0;
 }
