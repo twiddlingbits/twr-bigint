@@ -736,28 +736,79 @@ int twr_big_2log(struct twr_bigint * numin, struct twr_bigint * denin) {
 	}
 }
 
+// int log10, rounds down.  Ie, 9 return 0, 19 returns 1.
+static uint32_t log10_u32(uint32_t n) {
+	assert(n!=0);
+
+	if (n < 10) return 0;
+	if (n < 100) return 1;
+	if (n < 1000) return 2;
+	if (n < 10000) return 3;
+	if (n < 100000) return 4;
+	if (n < 1000000) return 5;
+	if (n < 10000000) return 6;
+	if (n < 100000000) return 7;
+	if (n < 1000000000) return 8; // 1 Billion
+	return 9;
+}
+
+static uint32_t log10_u64(uint64_t n) {
+	assert(n!=0);
+
+	if (n < 10) return 0;
+	if (n < 100) return 1;
+	if (n < 1000) return 2;
+	if (n < 10000) return 3;
+	if (n < 100000) return 4;
+	if (n < 1000000) return 5;
+	if (n < 10000000) return 6;
+	if (n < 100000000) return 7;
+	if (n < 1000000000) return 8; // 1 Billion
+	if (n < 10000000000ULL) return 9; 
+	if (n < 100000000000ULL) return 10; 
+	if (n < 1000000000000ULL) return 11;
+	if (n < 10000000000000ULL) return 12; 
+	if (n < 100000000000000ULL) return 13; 
+	if (n < 1000000000000000ULL) return 14; 
+	if (n < 10000000000000000ULL) return 15; 
+	if (n < 100000000000000000ULL) return 16; 
+	if (n < 1000000000000000000ULL) return 17; 
+	if (n < 10000000000000000000ULL) return 18; 
+	return 19;
+}
+
 uint32_t twr_big_num10digits(struct twr_bigint * numberin) {
 	if (twr_big_iszero(numberin)) return 1;
+
+	if (twr_big_isint32u(numberin))
+		return log10_u32(twr_big_get32u(numberin))+1;
+
+	if (get_used_word_count(numberin)==2) {
+		uint64_t ui64=(((uint64_t)numberin->word[1])<<32)|numberin->word[0];
+		return log10_u64(ui64)+1;
+	}
 
 	struct twr_bigint one;
 	twr_big_assign32u(&one, 1);
 	return twr_big_10log(numberin, &one)+1;
 }
-	/*
-	int count = 0; 
-	struct twr_bigint ten, number;
 
-	twr_big_assign32u(&ten, 10);
-	twr_big_assign(&number, numberin);
+#if 0
+	struct twr_bigint in=*numberin;
 
-	do { 
-		twr_big_div(&number, 0, &number, &ten);
-		//number = number / 10; 
-		++count; 
-	} while (!twr_big_iszero(&number));
+	struct twr_bigint billion;
+	twr_big_assign32u(&billion, 1000000000);
+	twr_big_complement(&billion, &billion);
+	twr_big_add32u(&billion, &billion, 1);  // twos complement, for subtraction
 
-	return count;
-	*/
+	int bc=2;  // actually 1, but add in the extra 1 needed to turn log into digit count
+	while (1) {
+		twr_big_add(&in, &in, &billion);   // subtract 1B
+		if (twr_big_isint32u(&in))
+			return log10_u32(twr_big_get32u(&in))+bc;
+		bc++;
+	}
+#endif
 
 static void _strhorizflip(char * buffer, int n) {
 	for (int k=0; k<n/2;k++)  {
@@ -1084,6 +1135,12 @@ int twr_big_run_unit_tests() {
 
 	twr_big_assign32u(&a, 1234);
 	if (twr_big_num10digits(&a)!=4) return 0;
+
+	twr_big_10pow(&a, 15);
+	if (twr_big_num10digits(&a)!=16) return 0;
+
+	twr_big_10pow(&a, 50);
+	if (twr_big_num10digits(&a)!=51) return 0;
 
 	struct twr_bigint small, big;
 	twr_big_bzero(&small);
