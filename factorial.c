@@ -5,7 +5,7 @@
 #include "twr-bigint.h"
 
 // eg. 7! := 1×2×3×4×5×6×7. Factorial zero is defined as equal to 1
-// factorial of 300 is the largest bigint that will fit in the default bigint size
+// factorial of 300 is the largest bigint that will fit in a 64 word bigint size
 
 int main (int argc, char *argv[]) {
 	if (argc!=2) {
