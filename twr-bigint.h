@@ -4,7 +4,7 @@
 
 #include <stdint.h>  
 
-/** a simple unsigned bigint of BIG_INT_WORD_COUNT*32 bits with default word count */
+/** a simple unsigned bigint of max size BIG_INT_WORD_COUNT*32 bits */
 
 #define BIG_INT_WORD_COUNT 80
 
