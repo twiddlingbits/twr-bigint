@@ -2,9 +2,9 @@
 /* Copyright 2023 Anthony J. Wood */
 /* Okay to use under MIT license */
 
-#include <stdint.h>  
+/** a unsigned bigint of max size BIG_INT_WORD_COUNT*32 bits */
 
-/** a simple unsigned bigint of max size BIG_INT_WORD_COUNT*32 bits */
+#include <stdint.h>  
 
 #define BIG_INT_WORD_COUNT 80
 
