@@ -16,7 +16,7 @@ int main (int argc, char *argv[]) {
 	int i=atoi(argv[1]);
 
 	if (i<0)  {
-		printf("please use a positive number\n");
+		printf("please use a positive number.\n");
 		exit(1);
 	}
 
