@@ -683,8 +683,8 @@ parameters (e.g., division by 0).
 that the dividend be at least as long as the divisor.  (In his terms,
 m >= 0 (unstated).  Therefore m+n >= n.) */
 
-static int divmnu(unsigned q[], unsigned r[],
-     const unsigned u[], const unsigned v[],
+static int divmnu(unsigned long q[], unsigned long r[],
+     const unsigned long u[], const unsigned long v[],
      int m, int n) {
 
    const unsigned long long b = 4294967296LL; // Number base (2**32).
