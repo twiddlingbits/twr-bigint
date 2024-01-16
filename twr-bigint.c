@@ -5,6 +5,7 @@
 
 #include "twr-bigint.h"
 #include <assert.h>
+#include <stddef.h>
 
 #define max(x, y) ((x) > (y) ? (x) : (y))
 
@@ -215,6 +216,7 @@ static uint32_t pow10_u32(uint32_t n) {
 			return 1000000000;
 		default:
 			assert(0);	
+			return 0;
 	}
 }
 
@@ -243,6 +245,7 @@ static uint32_t pow5_u32(uint32_t n) {
 			return 1953125;
 		default:
 			assert(0);	
+			return 0;
 	}
 }
 

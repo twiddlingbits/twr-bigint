@@ -4,6 +4,9 @@
 
 /** a unsigned bigint of max size BIG_INT_WORD_COUNT*32 bits */
 
+#ifndef __TWR_BIGINT_H__
+#define __TWR_BIGINT_H__
+
 #include <stdint.h>  
 
 #define BIG_INT_WORD_COUNT 80
@@ -68,4 +71,7 @@ int twr_big_itoa(struct twr_bigint * valuein, char* buffer, int size, int radixi
 int twr_big_atoi(const char *str, struct twr_bigint* result);
 uint32_t twr_big_num10digits(struct twr_bigint* numberin);
 
+int twr_big_run_unit_tests();
 
+
+#endif
