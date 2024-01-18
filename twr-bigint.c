@@ -363,8 +363,8 @@ int twr_big_shiftright_words(struct twr_bigint * big, unsigned int n) {
 		// big->word[i]=0;
 	}
 
-for (unsigned int i=0; i < n; i++)
-	if (big->word[i]!=0) lostbits=1;
+	for (unsigned int i=0; i < n; i++)
+		if (big->word[i]!=0) lostbits=1;
 
 /* move words */
 	while (move--) {
