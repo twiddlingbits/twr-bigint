@@ -71,7 +71,7 @@ int twr_big_itoa(struct twr_bigint * valuein, char* buffer, int size, int radixi
 int twr_big_atoi(const char *str, struct twr_bigint* result);
 uint32_t twr_big_num10digits(struct twr_bigint* numberin);
 
-int twr_big_run_unit_tests();
+int twr_big_run_unit_tests(void);
 
 
 #endif
