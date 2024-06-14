@@ -14,7 +14,7 @@ This implementation of an unsigned big integer has the following benefits:
 ## To Use In Your Project
 copy bigint.c and bigint.h into your project.
 
-This bigint library is also available as part of my tiny-wasm-runtime library (for which it was created, to implement various float functions).
+This bigint library is also available as part of my twr-wasm library (for which it was created, to implement various float functions).
 
 ## Documentation
 See bigint.h for a list of functions available.
